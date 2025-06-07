@@ -1,5 +1,13 @@
 use bedrockgen::BedrockGenerator;
 use bedrockgen::overworld::OverworldBedrock;
+use bedrockgen::overworld::xrng::Xrng;
+
+struct PartialState {
+    low0: u64,
+    low17: u64,
+    high17: u64,
+    bit_length: usize,
+}
 
 fn similarity_check(first: &[bool], second: &[bool]) -> f64 {
     let length = first.len();
@@ -13,6 +21,24 @@ fn similarity_check(first: &[bool], second: &[bool]) -> f64 {
     }
 
     (counter as f64) / (length as f64)
+}
+
+fn check_state_accuracy(partial_state: &PartialState, sample_bedrock: &[bool]) -> f64 {
+    //this shall return how accurate a state is.
+
+    let low0 = (counter) & ((1 << bruteforce_bit_count) - 1);
+    let low17 = (counter >> (bruteforce_bit_count)) & ((1 << bruteforce_bit_count) - 1);
+    let high17 = (counter >> (2 * bruteforce_bit_count)) & ((1 << bruteforce_bit_count) - 1);
+
+    //create state
+    let modified_state = OverworldBedrock {
+        xr: Xrng {
+            high: 0,
+            low: 0,
+        },
+    };
+
+    0.0
 }
 
 fn main() {
@@ -37,16 +63,14 @@ fn main() {
     let counter_max = 3 * bruteforce_bit_count;
 
     //test against seed 0
-    let control_state = OverworldBedrock::new(694201337);
-    let check_against = control_state.generate_range(0, -60, 0, check_size, -59, check_size);
+    let sample_state = OverworldBedrock::new(694201337);
+    let sample_bedrock = sample_state.generate_range(0, -60, 0, check_size, -59, check_size);
 
     //dummy overworld bedrock thing to hack the states
     let mut modified_state = OverworldBedrock::new(0);
     for counter in 0..(1 << counter_max) {
         //extract bits from counter
-        let low0 = (counter) & ((1 << bruteforce_bit_count) - 1);
-        let low17 = (counter >> (bruteforce_bit_count)) & ((1 << bruteforce_bit_count) - 1);
-        let high17 = (counter >> (2 * bruteforce_bit_count)) & ((1 << bruteforce_bit_count) - 1);
+
         
         //put extracted bits into state
         modified_state.xr.low = (low0 << (64 - bruteforce_bit_count)) | (low17 << (47 - bruteforce_bit_count));
@@ -55,7 +79,7 @@ fn main() {
 
         //now we can check state for any funny business
         let bedrock_pattern = modified_state.generate_range(0, -60, 0, check_size, -59, check_size);
-        let similarity = similarity_check(&check_against, &bedrock_pattern);
+        let similarity = similarity_check(&sample_bedrock, &bedrock_pattern);
         if 0.993 < similarity {
             print!("{similarity}");
             println!(" high:{} low:{}", modified_state.xr.high, modified_state.xr.low);
